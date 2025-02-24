@@ -1,0 +1,92 @@
+# Define All lists here
+- list: sensitive_files
+  items: [/etc/passwd,/etc/shadow,/var/run/secrets/kubernetes.io/serviceaccount/token,/var/run/secrets/kubernetes.io/serviceaccount/namespace
+nc]
+
+- list: trusted_namespaces
+  items: [kube-system, kube-public, kube-node-lease]
+
+# Define All Macros Here
+
+- macro: container
+  condition: (container.id != host)
+
+- macro: spawned_process
+  condition: evt.type = execve and evt.dir=<
+
+- macro: sensitive_file_read
+  condition: (fd.name in (sensitive_files)) or (fd.name contains .aws)
+
+- macro: open_read
+  condition: (evt.type in (open,openat,openat2) and evt.is_open_read=true and fd.typechar='f' and fd.num>=0)
+
+- macro: outbound
+  condition: evt.type=connect and evt.dir=< and (fd.typechar=4 or fd.typechar=6)
+
+- macro: trusted_namespace
+  condition: k8s.ns.name in (trusted_namespaces)
+
+- macro: container_entrypoint
+  condition: (not proc.pname exists or proc.pname in (runc:[0:PARENT], runc:[1:CHILD], runc, docker-runc, exe, docker-runc-cur, containerd-shim, systemd, crio))
+
+# Define All Rules Here
+
+# - rule: run_env_command
+#   desc: rule to detect execution of the env command.
+#   condition: proc.name = env and spawned_process and container
+#   output: "env command was executed!"
+#   priority: WARNING
+
+- rule: run_curl_command
+  desc: rule to detect execution of the curl command.
+  condition: proc.name = curl and spawned_process and proc.args in (curl_args) and container
+  output: "curl command was executed!"
+  priority: WARNING
+
+- rule: run_wget_command
+  desc: rule to detect execution of the wget command.
+  condition: proc.name = wget and spawned_process and container
+  output: "wget command was executed!"
+  priority: WARNING
+
+- rule: run_nc_command
+  desc: rule to detect execution of the nc command.
+  condition: proc.name = nc and spawned_process and container
+  output: "wget command was executed!"
+  priority: WARNING
+
+- rule: run_uname_command
+  desc: rule to detect execution of the uname command.
+  condition: proc.name = uname and spawned_process and container
+  output: "uname command was executed!"
+  priority: WARNING
+
+- rule: run_which_command
+  desc: rule to detect execution of the which command.
+  condition: proc.name = which and spawned_process and container
+  output: "which command was executed!"
+  priority: WARNING
+
+- rule: run_aws_command
+  desc: rule to detect execution of the aws command.
+  condition: proc.name = aws and spawned_process and container
+  output: "aws command was executed!"
+  priority: WARNING
+
+- rule: run_kubectl_command
+  desc: rule to detect execution of the kubectl command.
+  condition: proc.name = kubectl and spawned_process and container
+  output: "kubectl command was executed!"
+  priority: WARNING
+
+- rule: read_sensitive_file
+  desc: rule to detect reading of sensitive files.
+  condition: sensitive_file_read and open_read and container and not trusted_namespace and not container_entrypoint
+  output: "Sensitive file opened for reading"
+  priority: WARNING
+
+- rule: IMDS_access
+  desc: rule to detect access to the Instance Metadata Service.
+  condition: outbound and fd.sip=169.254.169.254 and container and not trusted_namespace and not container_entrypoint
+  output: "Instance Metadata Service accessed!"
+  priority: WARNING
