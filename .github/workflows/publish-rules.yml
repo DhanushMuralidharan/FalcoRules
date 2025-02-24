@@ -21,7 +21,7 @@ jobs:
       # Only one ruleset file for our demo
       RULESET_FILE: rules.yaml
       # Used to setup Auth and OCI artifact location
-      OCI_REGISTRY: docker.io
+      OCI_REGISTRY: index.docker.io
       # Assuming we are in the main branch, our OCI artifact will
       # look something like ghcr.io/user/repo/custom-rules:main
       OCI_ARTIFACT_NAME: falco-rules
